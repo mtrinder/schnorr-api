@@ -1,7 +1,8 @@
 #include "cryptopp/sha3.h"
+#include "cryptopp/sha.h"
 #include "Schnorr.h"
 
-CCurve::CCurve()
+SchnorrCPP::CCurve::CCurve()
 {
 	secretKeySet = false;
 	publicKeySet = false;
@@ -22,13 +23,13 @@ CCurve::CCurve()
 	G = ECPPoint(Gx, Gy);
 }
 
-CCurve::~CCurve()
+SchnorrCPP::CCurve::~CCurve()
 {
 	secretKeySet = false;
 	publicKeySet = false;
 }
 
-Integer CCurve::HashPointMessage(const ECPPoint& R,
+Integer SchnorrCPP::CCurve::HashPointMessage(const ECPPoint& R,
 	const byte* message, int mlen)
 {
 	const int digestsize = 256/8;
@@ -50,14 +51,14 @@ Integer CCurve::HashPointMessage(const ECPPoint& R,
 	return ans;
 }
 
-bool CCurve::GenerateSecretKey()
+bool SchnorrCPP::CCurve::GenerateSecretKey()
 {
 	secretKey = Integer(rng, 256) % q;
 	secretKeySet = true;
 	return true;
 }
 
-bool CCurve::GeneratePublicKey()
+bool SchnorrCPP::CCurve::GeneratePublicKey()
 {
 	if (!secretKeySet)
 		return false;
@@ -66,7 +67,7 @@ bool CCurve::GeneratePublicKey()
 	return true;
 }
 
-bool CCurve::GenerateKeys()
+bool SchnorrCPP::CCurve::GenerateKeys()
 {
 	if (!GenerateSecretKey())
 		return false;
@@ -75,7 +76,7 @@ bool CCurve::GenerateKeys()
 	return true;
 }
 
-void CCurve::Sign(Integer& sigE, Integer& sigS, const byte* message, int mlen)
+void SchnorrCPP::CCurve::Sign(Integer& sigE, Integer& sigS, const byte* message, int mlen)
 {
 	Integer k;
 	ECPPoint R;
@@ -85,7 +86,7 @@ void CCurve::Sign(Integer& sigE, Integer& sigS, const byte* message, int mlen)
 	sigS = (k - secretKey*sigE) % q;
 }
 
-bool CCurve::Verify(const Integer& sigE, const Integer& sigS,
+bool SchnorrCPP::CCurve::Verify(const Integer& sigE, const Integer& sigS,
 	const byte* message, int mlen)
 {
 	ECPPoint R;
@@ -94,7 +95,7 @@ bool CCurve::Verify(const Integer& sigE, const Integer& sigS,
 	return (sigE == sigEd);
 }
 
-Integer CCurve::GetPublicKeyX()
+Integer SchnorrCPP::CCurve::GetPublicKeyX()
 {
 	//if (!publicKeySet)
 	//	throw new key_error("Public key not set");
@@ -102,7 +103,7 @@ Integer CCurve::GetPublicKeyX()
 	return Q.x;
 }
 
-Integer CCurve::GetPublicKeyY()
+Integer SchnorrCPP::CCurve::GetPublicKeyY()
 {
 	//if (!publicKeySet)
 	//	throw new key_error("Public key not set");
@@ -110,7 +111,7 @@ Integer CCurve::GetPublicKeyY()
 	return Q.y;
 }
 
-Integer CCurve::GetSecretKey()
+Integer SchnorrCPP::CCurve::GetSecretKey()
 {
 	//if (!secretKeySet)
 	//	throw new key_error("Secret key not set");
@@ -118,7 +119,7 @@ Integer CCurve::GetSecretKey()
 	return secretKey;
 }
 
-bool CCurve::SetVchPublicKey(std::vector<unsigned char> vchPubKey)
+bool SchnorrCPP::CCurve::SetVchPublicKey(std::vector<unsigned char> vchPubKey)
 {
 	ECPPoint publicKey;
 
@@ -129,7 +130,7 @@ bool CCurve::SetVchPublicKey(std::vector<unsigned char> vchPubKey)
 	return true;
 }
 
-bool CCurve::GetVchPublicKey(std::vector<unsigned char>& vchPubKey)
+bool SchnorrCPP::CCurve::GetVchPublicKey(std::vector<unsigned char>& vchPubKey)
 {
 	// set to true for compressed
 	const bool fCompressed = true;
@@ -138,7 +139,7 @@ bool CCurve::GetVchPublicKey(std::vector<unsigned char>& vchPubKey)
 	return true;
 }
 
-bool CCurve::GetSignatureFromVch(std::vector<unsigned char> vchSig, Integer& sigE, Integer& sigS)
+bool SchnorrCPP::CCurve::GetSignatureFromVch(std::vector<unsigned char> vchSig, Integer& sigE, Integer& sigS)
 {
 	if (vchSig.size() != (SCHNORR_SIG_SIZE * 2))
 	return false;
@@ -153,7 +154,7 @@ bool CCurve::GetSignatureFromVch(std::vector<unsigned char> vchSig, Integer& sig
 	return true;
 }
 
-bool CCurve::GetVchFromSignature(std::vector<unsigned char>& vchSig, Integer sigE, Integer sigS)
+bool SchnorrCPP::CCurve::GetVchFromSignature(std::vector<unsigned char>& vchSig, Integer sigE, Integer sigS)
 {
 	vchSig.resize(SCHNORR_SIG_SIZE * 2);
 
@@ -165,16 +166,17 @@ bool CCurve::GetVchFromSignature(std::vector<unsigned char>& vchSig, Integer sig
 	return true;
 }
 
-bool CCurve::SetVchSecretKey(std::vector<unsigned char> vchSecret)
+bool SchnorrCPP::CCurve::SetVchSecretKey(std::vector<unsigned char> vchSecret)
 {
 	if (vchSecret.size() != SCHNORR_SECRET_KEY_SIZE)
 	return false;
 
 	secretKey.Decode(&vchSecret[0], SCHNORR_SECRET_KEY_SIZE);
+    secretKeySet = true;
 	return true;
 }
 
-bool CCurve::GetVchSecretKey(std::vector<unsigned char>& vchSecret)
+bool SchnorrCPP::CCurve::GetVchSecretKey(std::vector<unsigned char>& vchSecret)
 {
 	if (!secretKeySet)
 	return false;
@@ -183,3 +185,4 @@ bool CCurve::GetVchSecretKey(std::vector<unsigned char>& vchSecret)
 	secretKey.Encode(&vchSecret[0], SCHNORR_SECRET_KEY_SIZE);
 	return true;
 }
+

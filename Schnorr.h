@@ -11,6 +11,8 @@ using namespace std;
 #include "cryptopp/integer.h"    // Integer Operations
 using namespace CryptoPP;
 
+NAMESPACE_BEGIN(SchnorrCPP)
+
 // A class encapsulating the secp256r1 curve
 // and Schnorr signing functions
 class CCurve {
@@ -68,5 +70,7 @@ void Sign(Integer& sig1,Integer& sig2,const Integer& sk,
 bool Verify(const Integer& pk1,const Integer& pk2,
             const Integer& sig1,const Integer& sig2,
             const byte* message,int mlen);
+
+NAMESPACE_END
 
 #endif
