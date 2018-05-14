@@ -29,28 +29,6 @@ SchnorrCPP::CCurve::~CCurve()
 	publicKeySet = false;
 }
 
-Integer SchnorrCPP::CCurve::HashPointMessage(const ECPPoint& R,
-	const byte* message, int mlen)
-{
-	const int digestsize = 256/8;
-	SHA3 sha(digestsize);
-
-	int len = ec.EncodedPointSize();
-	byte *buffer = new byte[len];
-	ec.EncodePoint(buffer, R, false);
-	sha.Update(buffer, len);
-	delete[] buffer;
-
-	sha.Update(message, mlen);
-
-	byte digest[digestsize];
-	sha.Final(digest);
-
-	Integer ans;
-	ans.Decode(digest, digestsize);
-	return ans;
-}
-
 bool SchnorrCPP::CCurve::GenerateSecretKey()
 {
 	secretKey = Integer(rng, 256) % q;
@@ -76,47 +54,34 @@ bool SchnorrCPP::CCurve::GenerateKeys()
 	return true;
 }
 
-void SchnorrCPP::CCurve::Sign(Integer& sigE, Integer& sigS, const byte* message, int mlen)
-{
-	Integer k;
-	ECPPoint R;
-	k = Integer(rng, 256) % q;
-	R = ec.ScalarMultiply(G, k);
-	sigE = HashPointMessage(R, message, mlen) % q;
-	sigS = (k - secretKey*sigE) % q;
-}
-
-bool SchnorrCPP::CCurve::Verify(const Integer& sigE, const Integer& sigS,
-	const byte* message, int mlen)
-{
-	ECPPoint R;
-	R = ec.CascadeScalarMultiply(G, sigS, Q, sigE);
-	Integer sigEd = HashPointMessage(R, message, mlen) % q;
-	return (sigE == sigEd);
-}
-
 Integer SchnorrCPP::CCurve::GetPublicKeyX()
 {
-	//if (!publicKeySet)
-	//	throw new key_error("Public key not set");
-
 	return Q.x;
 }
 
 Integer SchnorrCPP::CCurve::GetPublicKeyY()
 {
-	//if (!publicKeySet)
-	//	throw new key_error("Public key not set");
-
 	return Q.y;
 }
 
 Integer SchnorrCPP::CCurve::GetSecretKey()
 {
-	//if (!secretKeySet)
-	//	throw new key_error("Secret key not set");
-
 	return secretKey;
+}
+
+void SchnorrCPP::CCurve::ModuloAddToHex(Integer a, Integer b, std::vector<char>& dataBytes)
+{
+    Integer modAdd = ec.GetField().Add(a, b);
+
+    ostringstream oss;
+    oss << std::hex << modAdd;
+    string str = oss.str();
+    str = str.substr(0, str.size()-1);
+    //cout << str << endl;
+
+    const char* ptr = str.data();
+    
+    dataBytes = std::vector<char>(ptr, ptr + str.length());
 }
 
 bool SchnorrCPP::CCurve::SetVchPublicKey(std::vector<unsigned char> vchPubKey)
@@ -139,33 +104,6 @@ bool SchnorrCPP::CCurve::GetVchPublicKey(std::vector<unsigned char>& vchPubKey)
 	return true;
 }
 
-bool SchnorrCPP::CCurve::GetSignatureFromVch(std::vector<unsigned char> vchSig, Integer& sigE, Integer& sigS)
-{
-	if (vchSig.size() != (SCHNORR_SIG_SIZE * 2))
-	return false;
-
-	// extract bytes
-	std::vector<unsigned char> sigEVec(&vchSig[0], &vchSig[SCHNORR_SIG_SIZE]);
-	std::vector<unsigned char> sigSVec(&vchSig[SCHNORR_SIG_SIZE], &vchSig[1 + SCHNORR_SIG_SIZE * 2]);
-
-	// vectors -> Integers
-	sigE.Decode(&sigEVec[0], SCHNORR_SIG_SIZE);
-	sigS.Decode(&sigSVec[0], SCHNORR_SIG_SIZE);
-	return true;
-}
-
-bool SchnorrCPP::CCurve::GetVchFromSignature(std::vector<unsigned char>& vchSig, Integer sigE, Integer sigS)
-{
-	vchSig.resize(SCHNORR_SIG_SIZE * 2);
-
-	if (sigE.MinEncodedSize() > SCHNORR_SIG_SIZE || sigS.MinEncodedSize() > SCHNORR_SIG_SIZE)
-	return false;
-
-	sigE.Encode(&vchSig[0], SCHNORR_SIG_SIZE);
-	sigS.Encode(&vchSig[SCHNORR_SIG_SIZE], SCHNORR_SIG_SIZE);
-	return true;
-}
-
 bool SchnorrCPP::CCurve::SetVchSecretKey(std::vector<unsigned char> vchSecret)
 {
 	if (vchSecret.size() != SCHNORR_SECRET_KEY_SIZE)
@@ -173,6 +111,8 @@ bool SchnorrCPP::CCurve::SetVchSecretKey(std::vector<unsigned char> vchSecret)
 
 	secretKey.Decode(&vchSecret[0], SCHNORR_SECRET_KEY_SIZE);
     secretKeySet = true;
+    
+    GeneratePublicKey();
 	return true;
 }
 
@@ -185,4 +125,73 @@ bool SchnorrCPP::CCurve::GetVchSecretKey(std::vector<unsigned char>& vchSecret)
 	secretKey.Encode(&vchSecret[0], SCHNORR_SECRET_KEY_SIZE);
 	return true;
 }
+
+Integer SchnorrCPP::CCurve::HashPointMessage(const ECPPoint& R,
+                                             const byte* message, int mlen)
+{
+    const int digestsize = 256/8;
+    SHA3 sha(digestsize);
+    
+    int len = ec.EncodedPointSize();
+    byte *buffer = new byte[len];
+    ec.EncodePoint(buffer, R, false);
+    sha.Update(buffer, len);
+    delete[] buffer;
+    
+    sha.Update(message, mlen);
+    
+    byte digest[digestsize];
+    sha.Final(digest);
+    
+    Integer ans;
+    ans.Decode(digest, digestsize);
+    return ans;
+}
+
+void SchnorrCPP::CCurve::Sign(Integer& sigE, Integer& sigS, const byte* message, int mlen)
+{
+    Integer k;
+    ECPPoint R;
+    k = Integer(rng, 256) % q;
+    R = ec.ScalarMultiply(G, k);
+    sigE = HashPointMessage(R, message, mlen) % q;
+    sigS = (k - secretKey*sigE) % q;
+}
+
+bool SchnorrCPP::CCurve::Verify(const Integer& sigE, const Integer& sigS,
+                                const byte* message, int mlen)
+{
+    ECPPoint R;
+    R = ec.CascadeScalarMultiply(G, sigS, Q, sigE);
+    Integer sigEd = HashPointMessage(R, message, mlen) % q;
+    return (sigE == sigEd);
+}
+
+bool SchnorrCPP::CCurve::GetSignatureFromVch(std::vector<unsigned char> vchSig, Integer& sigE, Integer& sigS)
+{
+    if (vchSig.size() != (SCHNORR_SIG_SIZE * 2))
+        return false;
+    
+    // extract bytes
+    std::vector<unsigned char> sigEVec(&vchSig[0], &vchSig[SCHNORR_SIG_SIZE]);
+    std::vector<unsigned char> sigSVec(&vchSig[SCHNORR_SIG_SIZE], &vchSig[1 + SCHNORR_SIG_SIZE * 2]);
+    
+    // vectors -> Integers
+    sigE.Decode(&sigEVec[0], SCHNORR_SIG_SIZE);
+    sigS.Decode(&sigSVec[0], SCHNORR_SIG_SIZE);
+    return true;
+}
+
+bool SchnorrCPP::CCurve::GetVchFromSignature(std::vector<unsigned char>& vchSig, Integer sigE, Integer sigS)
+{
+    vchSig.resize(SCHNORR_SIG_SIZE * 2);
+    
+    if (sigE.MinEncodedSize() > SCHNORR_SIG_SIZE || sigS.MinEncodedSize() > SCHNORR_SIG_SIZE)
+        return false;
+    
+    sigE.Encode(&vchSig[0], SCHNORR_SIG_SIZE);
+    sigS.Encode(&vchSig[SCHNORR_SIG_SIZE], SCHNORR_SIG_SIZE);
+    return true;
+}
+
 
