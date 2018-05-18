@@ -69,19 +69,42 @@ Integer SchnorrCPP::CCurve::GetSecretKey()
 	return secretKey;
 }
 
-void SchnorrCPP::CCurve::ModuloAddToHex(Integer a, Integer b, std::vector<char>& dataBytes)
+void SchnorrCPP::CCurve::ModuloAddToHex(Integer k, Integer i, std::vector<unsigned char>& dataBytes)
 {
-    Integer modAdd = ec.GetField().Add(a, b);
+    Integer ki = (k + i).Modulo(q);
 
     ostringstream oss;
-    oss << std::hex << modAdd;
+    oss << std::hex << ki;
     string str = oss.str();
     str = str.substr(0, str.size()-1);
+    
+    // Debug
     //cout << str << endl;
 
     const char* ptr = str.data();
     
-    dataBytes = std::vector<char>(ptr, ptr + str.length());
+    dataBytes = std::vector<unsigned char>(ptr, ptr + str.length());
+}
+
+void SchnorrCPP::CCurve::PointMultiplyAddToHex(Integer i, std::vector<unsigned char>& dataBytes)
+{
+    if (!publicKeySet)
+        return;
+
+    ECPPoint ki = ec.ScalarMultiply(G, i);
+    
+    ECPPoint kip = ECPPoint(ki.x + Q.x, ki.y + Q.y);
+    
+    // Debug
+    //ostringstream oss;
+    //oss << std::hex << kip.x;
+    //string str = oss.str();
+    //str = str.substr(0, str.size()-1);
+    //cout << str << endl;
+    
+    const bool fCompressed = true;
+    dataBytes.resize(ec.EncodedPointSize(fCompressed));
+    ec.EncodePoint(&dataBytes[0], kip, fCompressed);
 }
 
 bool SchnorrCPP::CCurve::SetVchPublicKey(std::vector<unsigned char> vchPubKey)
@@ -89,19 +112,24 @@ bool SchnorrCPP::CCurve::SetVchPublicKey(std::vector<unsigned char> vchPubKey)
 	ECPPoint publicKey;
 
 	if (!ec.DecodePoint (publicKey, &vchPubKey[0], vchPubKey.size()))
-	return false;
+        return false;
 
+    publicKeySet = true;
 	Q = publicKey;
 	return true;
 }
 
 bool SchnorrCPP::CCurve::GetVchPublicKey(std::vector<unsigned char>& vchPubKey)
 {
+    if (!publicKeySet)
+        return false;
+    
 	// set to true for compressed
 	const bool fCompressed = true;
 	vchPubKey.resize(ec.EncodedPointSize(fCompressed));
 	ec.EncodePoint(&vchPubKey[0], Q, fCompressed);
-	return true;
+	
+    return true;
 }
 
 bool SchnorrCPP::CCurve::SetVchSecretKey(std::vector<unsigned char> vchSecret)
@@ -119,7 +147,7 @@ bool SchnorrCPP::CCurve::SetVchSecretKey(std::vector<unsigned char> vchSecret)
 bool SchnorrCPP::CCurve::GetVchSecretKey(std::vector<unsigned char>& vchSecret)
 {
 	if (!secretKeySet)
-	return false;
+        return false;
 
 	vchSecret.resize(SCHNORR_SECRET_KEY_SIZE);
 	secretKey.Encode(&vchSecret[0], SCHNORR_SECRET_KEY_SIZE);

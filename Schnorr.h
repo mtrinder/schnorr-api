@@ -57,7 +57,8 @@ public:
 	Integer GetPublicKeyY();
 	Integer GetSecretKey();
 
-    void ModuloAddToHex(Integer a, Integer b, std::vector<char>& dataBytes);
+    void ModuloAddToHex(Integer k, Integer i, std::vector<unsigned char>& dataBytes);
+    void PointMultiplyAddToHex(Integer i, std::vector<unsigned char>& dataBytes);
     
 	void Sign(Integer& sigE, Integer& sigS, const byte* message, int mlen);
 	bool Verify(const Integer& sigE, const Integer& sigS,
