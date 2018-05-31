@@ -29,6 +29,16 @@ SchnorrCPP::CCurve::~CCurve()
 	publicKeySet = false;
 }
 
+bool SchnorrCPP::CCurve::HasPrivateKey()
+{
+    return secretKeySet;
+}
+
+bool SchnorrCPP::CCurve::HasPublicKey()
+{
+    return publicKeySet;
+}
+
 bool SchnorrCPP::CCurve::GenerateSecretKey()
 {
 	secretKey = Integer(rng, 256) % q;
@@ -42,6 +52,7 @@ bool SchnorrCPP::CCurve::GeneratePublicKey()
 		return false;
 	Q = ec.ScalarMultiply(G, secretKey);
 	publicKeySet = true;
+    
 	return true;
 }
 
@@ -77,8 +88,6 @@ void SchnorrCPP::CCurve::ModuloAddToHex(Integer k, Integer i, std::vector<unsign
     oss << std::hex << ki;
     string str = oss.str();
     str = str.substr(0, str.size()-1);
-    
-    // Debug
     //cout << str << endl;
 
     const char* ptr = str.data();
@@ -95,13 +104,6 @@ void SchnorrCPP::CCurve::PointMultiplyAddToHex(Integer i, std::vector<unsigned c
     
     ECPPoint kip = ECPPoint(ki.x + Q.x, ki.y + Q.y);
     
-    // Debug
-    //ostringstream oss;
-    //oss << std::hex << kip.x;
-    //string str = oss.str();
-    //str = str.substr(0, str.size()-1);
-    //cout << str << endl;
-    
     const bool fCompressed = true;
     dataBytes.resize(ec.EncodedPointSize(fCompressed));
     ec.EncodePoint(&dataBytes[0], kip, fCompressed);
@@ -116,6 +118,7 @@ bool SchnorrCPP::CCurve::SetVchPublicKey(std::vector<unsigned char> vchPubKey)
 
     publicKeySet = true;
 	Q = publicKey;
+    
 	return true;
 }
 
@@ -176,22 +179,53 @@ Integer SchnorrCPP::CCurve::HashPointMessage(const ECPPoint& R,
     return ans;
 }
 
-void SchnorrCPP::CCurve::Sign(Integer& sigE, Integer& sigS, const byte* message, int mlen)
+bool SchnorrCPP::CCurve::Sign(std::vector<unsigned char> vchHash, std::vector<unsigned char>& vchSig)
 {
+    // sign the hash
     Integer k;
     ECPPoint R;
+    Integer sigE, sigS;
+    
     k = Integer(rng, 256) % q;
     R = ec.ScalarMultiply(G, k);
-    sigE = HashPointMessage(R, message, mlen) % q;
+    
+    sigE = HashPointMessage(R, &vchHash[0], (int)vchHash.size()) % q;
     sigS = (k - secretKey*sigE) % q;
+    
+    // encode the vch format
+    vchSig.resize(SCHNORR_SIG_SIZE * 2);
+    if (sigE.MinEncodedSize() > SCHNORR_SIG_SIZE || sigS.MinEncodedSize() > SCHNORR_SIG_SIZE)
+        return false;
+    
+    sigE.Encode(&vchSig[0], SCHNORR_SIG_SIZE);
+    sigS.Encode(&vchSig[SCHNORR_SIG_SIZE], SCHNORR_SIG_SIZE);
+    
+    //Verify(vchHash, vchSig);
+    
+    return true;
 }
 
-bool SchnorrCPP::CCurve::Verify(const Integer& sigE, const Integer& sigS,
-                                const byte* message, int mlen)
+bool SchnorrCPP::CCurve::Verify(std::vector<unsigned char> vchHash, std::vector<unsigned char> vchSig)
 {
+    // decode the vchSig
+    Integer sigE, sigS;
+    if (vchSig.size() != (SCHNORR_SIG_SIZE * 2))
+        return false;
+    
+    // extract bytes
+    std::vector<unsigned char> sigEVec(&vchSig[0], &vchSig[SCHNORR_SIG_SIZE]);
+    std::vector<unsigned char> sigSVec(&vchSig[SCHNORR_SIG_SIZE], &vchSig[1 + SCHNORR_SIG_SIZE * 2]);
+    
+    // vectors -> Integers
+    sigE.Decode(&sigEVec[0], SCHNORR_SIG_SIZE);
+    sigS.Decode(&sigSVec[0], SCHNORR_SIG_SIZE);
+    
+    // verify the hash
     ECPPoint R;
     R = ec.CascadeScalarMultiply(G, sigS, Q, sigE);
-    Integer sigEd = HashPointMessage(R, message, mlen) % q;
+    
+    Integer sigEd = HashPointMessage(R, &vchHash[0], (int)vchHash.size()) % q;
+    
     return (sigE == sigEd);
 }
 
@@ -222,4 +256,12 @@ bool SchnorrCPP::CCurve::GetVchFromSignature(std::vector<unsigned char>& vchSig,
     return true;
 }
 
+void SchnorrCPP::CCurve::PrintInteger(Integer i)
+{
+    ostringstream oss;
+    oss << std::hex << i;
+    string str = oss.str();
+    str = str.substr(0, str.size()-1);
+    cout << str << endl;
+}
 

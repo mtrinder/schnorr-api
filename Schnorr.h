@@ -34,11 +34,16 @@ private:
     ECPPoint Q; // public key
 
     Integer HashPointMessage(const ECPPoint& R, const byte* message, int mlen);
+    
+    void PrintInteger(Integer i);
 
 public:
 	CCurve();
 
 	~CCurve();
+
+    bool HasPrivateKey();
+    bool HasPublicKey();
 
 	bool GenerateSecretKey();
 	bool GeneratePublicKey();
@@ -60,19 +65,9 @@ public:
     void ModuloAddToHex(Integer k, Integer i, std::vector<unsigned char>& dataBytes);
     void PointMultiplyAddToHex(Integer i, std::vector<unsigned char>& dataBytes);
     
-	void Sign(Integer& sigE, Integer& sigS, const byte* message, int mlen);
-	bool Verify(const Integer& sigE, const Integer& sigS,
-				const byte* message, int mlen);
+    bool Sign(std::vector<unsigned char> vchHash, std::vector<unsigned char>& vchSig);
+    bool Verify(std::vector<unsigned char> vchHash, std::vector<unsigned char> vchSig);
 };
-
-void KeyGen(Integer& sk,Integer& pk1,Integer& pk2,AutoSeededRandomPool& rng);
-
-void Sign(Integer& sig1,Integer& sig2,const Integer& sk,
-          const byte* message,int mlen,AutoSeededRandomPool& rng);
-
-bool Verify(const Integer& pk1,const Integer& pk2,
-            const Integer& sig1,const Integer& sig2,
-            const byte* message,int mlen);
 
 NAMESPACE_END
 
