@@ -9,6 +9,7 @@ using namespace std;
 #include "cryptopp/eccrypto.h"   // Elliptic Curve
 #include "cryptopp/ecp.h"        // F(p) EC
 #include "cryptopp/integer.h"    // Integer Operations
+#include "cryptopp/ecp.h"        // Curve Operations
 using namespace CryptoPP;
 
 NAMESPACE_BEGIN(SchnorrCPP)
@@ -62,8 +63,8 @@ public:
 	Integer GetPublicKeyY();
 	Integer GetSecretKey();
 
-    void ModuloAddToHex(Integer k, Integer i, std::vector<unsigned char>& dataBytes);
-    void PointMultiplyAddToHex(Integer i, std::vector<unsigned char>& dataBytes);
+    void ModuloAddToHex(Integer k, Integer iL, std::vector<unsigned char>& dataBytes);
+    void GetVchPointMultiplyAdd(Integer iL, std::vector<unsigned char>& dataBytes);
     
     bool Sign(std::vector<unsigned char> vchHash, std::vector<unsigned char>& vchSig);
     bool Verify(std::vector<unsigned char> vchHash, std::vector<unsigned char> vchSig);

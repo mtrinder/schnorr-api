@@ -9,7 +9,7 @@ SchnorrCPP::CCurve::CCurve()
 
 	// Load in curve secp256r1
 	Integer p, a, b, Gx, Gy;
-
+    
 	// Create the group
 	p = Integer("0xFFFFFFFF00000001000000000000000000000000FFFFFFFFFFFFFFFFFFFFFFFF");
 	a = Integer("-3");
@@ -80,33 +80,34 @@ Integer SchnorrCPP::CCurve::GetSecretKey()
 	return secretKey;
 }
 
-void SchnorrCPP::CCurve::ModuloAddToHex(Integer k, Integer i, std::vector<unsigned char>& dataBytes)
+// Cumpute private child key (see BIP32) ... ki = parse256(IL) + kpar (mod n)
+void SchnorrCPP::CCurve::ModuloAddToHex(Integer k, Integer iL, std::vector<unsigned char>& dataBytes)
 {
-    Integer ki = (k + i).Modulo(q);
+    Integer ki = (k + iL).Modulo(q);
 
     ostringstream oss;
     oss << std::hex << ki;
     string str = oss.str();
     str = str.substr(0, str.size()-1);
-    //cout << str << endl;
+    //cout << str << endl; // Debug use
 
     const char* ptr = str.data();
     
     dataBytes = std::vector<unsigned char>(ptr, ptr + str.length());
 }
 
-void SchnorrCPP::CCurve::PointMultiplyAddToHex(Integer i, std::vector<unsigned char>& dataBytes)
+// Cumpute public child key (see BIP32) ... Ki = point(parse256(IL)) + Kpar
+void SchnorrCPP::CCurve::GetVchPointMultiplyAdd(Integer iL, std::vector<unsigned char>& dataBytes)
 {
     if (!publicKeySet)
         return;
 
-    ECPPoint ki = ec.ScalarMultiply(G, i);
-    
-    ECPPoint kip = ECPPoint(ki.x + Q.x, ki.y + Q.y);
+    ECPPoint pi = ec.ScalarMultiply(G, iL);
+    ECPPoint Ki = ec.Add(pi, Q);
     
     const bool fCompressed = true;
     dataBytes.resize(ec.EncodedPointSize(fCompressed));
-    ec.EncodePoint(&dataBytes[0], kip, fCompressed);
+    ec.EncodePoint(&dataBytes[0], Ki, fCompressed);
 }
 
 bool SchnorrCPP::CCurve::SetVchPublicKey(std::vector<unsigned char> vchPubKey)
