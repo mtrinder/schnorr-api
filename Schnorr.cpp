@@ -136,6 +136,19 @@ bool SchnorrCPP::CCurve::GetVchPublicKey(std::vector<unsigned char>& vchPubKey)
     return true;
 }
 
+bool SchnorrCPP::CCurve::GetVchUncompressedPublicKey(std::vector<unsigned char>& vchPubKey)
+{
+    if (!publicKeySet)
+        return false;
+    
+    // set to true for compressed
+    const bool fCompressed = false;
+    vchPubKey.resize(ec.EncodedPointSize(fCompressed));
+    ec.EncodePoint(&vchPubKey[0], Q, fCompressed);
+    
+    return true;
+}
+
 bool SchnorrCPP::CCurve::SetVchSecretKey(std::vector<unsigned char> vchSecret)
 {
 	if (vchSecret.size() != SCHNORR_SECRET_KEY_SIZE)

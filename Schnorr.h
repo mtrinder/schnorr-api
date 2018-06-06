@@ -52,7 +52,8 @@ public:
 
 	bool SetVchPublicKey(std::vector<unsigned char> vchPubKey);
 	bool GetVchPublicKey(std::vector<unsigned char>& vchPubKey);
-
+    bool GetVchUncompressedPublicKey(std::vector<unsigned char>& vchPubKey);
+    
 	bool SetVchSecretKey(std::vector<unsigned char> vchSecret);
 	bool GetVchSecretKey(std::vector<unsigned char>& vchSecret);
 
