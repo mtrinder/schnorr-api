@@ -1,5 +1,4 @@
-#include "cryptopp/sha3.h"
-#include "cryptopp/sha.h"
+#include "cryptopp/keccak.h"
 #include "Schnorr.h"
 
 SchnorrCPP::CCurve::CCurve()
@@ -175,7 +174,7 @@ Integer SchnorrCPP::CCurve::HashPointMessage(const ECPPoint& R,
                                              const byte* message, int mlen)
 {
     const int digestsize = 256/8;
-    SHA3 sha(digestsize);
+    Keccak sha(digestsize);
     
     int len = ec.EncodedPointSize();
     byte *buffer = new byte[len];
@@ -187,7 +186,7 @@ Integer SchnorrCPP::CCurve::HashPointMessage(const ECPPoint& R,
     
     byte digest[digestsize];
     sha.Final(digest);
-    
+
     Integer ans;
     ans.Decode(digest, digestsize);
     return ans;
@@ -202,10 +201,10 @@ bool SchnorrCPP::CCurve::Sign(std::vector<unsigned char> vchHash, std::vector<un
     
     k = Integer(rng, 256) % q;
     R = ec.ScalarMultiply(G, k);
-    
+
     sigE = HashPointMessage(R, &vchHash[0], (int)vchHash.size()) % q;
     sigS = (k - secretKey*sigE) % q;
-    
+
     // encode the vch format
     vchSig.resize(SCHNORR_SIG_SIZE * 2);
     if (sigE.MinEncodedSize() > SCHNORR_SIG_SIZE || sigS.MinEncodedSize() > SCHNORR_SIG_SIZE)
@@ -214,7 +213,6 @@ bool SchnorrCPP::CCurve::Sign(std::vector<unsigned char> vchHash, std::vector<un
     sigE.Encode(&vchSig[0], SCHNORR_SIG_SIZE);
     sigS.Encode(&vchSig[SCHNORR_SIG_SIZE], SCHNORR_SIG_SIZE);
     
-    //Verify(vchHash, vchSig);
     
     return true;
 }
